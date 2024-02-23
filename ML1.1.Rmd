@@ -1,0 +1,618 @@
+---
+title: "Untitled"
+output:
+  word_document: default
+  html_document: default
+date: "2023-11-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Loading necessary libraries and packages to start our projects on doing deep analysis on capital Bike share data
+
+```{r}   
+
+library(knitr)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(corrplot)
+library(tidyverse)
+library(stringr)
+library(lubridate)
+library(scales)
+library(graphics)
+library(caret)
+library(readxl)   
+library(dplyr)    
+library(MASS)      
+library(caret)    
+library(stats)    
+library(knitr)
+```
+First, let's import our dataset from the Excel file named 'Capital Bike Sharing Dataset.xlsx' and display the first 5 rows to have an initial look at the data structure and contents.
+```{r }
+Bike_share <- read_excel("Capital Bike Sharing Dataset.xlsx")
+tibble(Bike_share)
+```
+Checking missing value of the dataset
+```{r }
+Bike_share %>% is.na() %>% colSums()
+anyNA(Bike_share)
+```
+checking the count variable to see outliers 
+```{r }
+ggplot(Bike_share, aes(, y = cnt)) +
+   geom_boxplot(fill = "skyblue")+labs(title = "Box plot of count variable",   y="count")
+```
+
+mnth distribution with cnt and weekday distribution of cnt 
+```{r }
+custom_colors <- c("#1f78b4", "#33a02c", "#e31a1c", "#ff7f00")
+
+
+ggplot(Bike_share, aes(x = mnth, y = cnt, fill = as.factor(season))) +
+  theme_bw() +
+  geom_col() +
+  scale_x_continuous(breaks = 1:12) +  # Specify breaks for months
+  scale_fill_manual(values = custom_colors, name = 'Season') +  # Specify custom colors and legend title
+  labs(x = 'Month', y = 'Total_Count', title = 'Season-wise Monthly Distribution of Counts')
+
+
+
+
+```
+
+```{r }
+# Assuming you have the required data and plots
+
+# Check the unique values in the 'weekday' variable
+unique_weekdays <- unique(Bike_share$yr)
+
+# Custom color palette
+custom_colors <- c("#1f78b4", "#33a02c")
+
+# Bar plot with custom colors and modified legend title
+bar_plot <- ggplot(Bike_share, aes(x = mnth, y = cnt, fill = as.factor(yr))) +
+  theme_bw() +
+  geom_col() +
+  scale_fill_manual(values = custom_colors, name = 'yr') +  # Specify custom colors and legend title
+  labs(x = 'Month', y = 'Total_Count', title = 'Monthly Distribution of Counts')
+
+# Print the plot
+print(bar_plot)
+
+
+```
+i want to see the comparison of hoilday, workingday and weekend with count numbers
+```{r }
+
+# Create a combined categorical variable
+Bike_share <- Bike_share %>%
+  mutate(day_type = case_when(
+    holiday == 1 ~ 'Holiday',
+    weekday %in% c(0, 6) ~ 'Weekend',
+    TRUE ~ 'Working Day'
+  ))
+
+# Grouped Bar Plot
+plot <- ggplot(Bike_share, aes(x = day_type, fill = day_type)) + 
+  geom_bar() +
+  geom_text(stat = 'count', aes(label = ..count..), vjust = -0.5) +
+  labs(title = "Bike Rentals Distribution: Holiday vs Weekend vs Working Day",
+       x = "Day Type", y = "Count of Bike Rentals") +
+  scale_fill_manual(values = c("blue", "green", "red"), labels = c("Holiday", "Weekend", "Working Day")) +
+  guides(fill = guide_legend(title = "Day Type")) +
+  theme_minimal()
+
+print(plot)
+
+Bike_share$day_type <- NULL
+```
+
+numerical variables distribution using histogram to see any skewed or kurtosis distribution
+```{r }
+par(mfrow=c(2, 4))   # setting the plotting area into a 2x4 matrix
+hist(Bike_share$temp, main="Temperature Distribution", xlab="Temperature", col="skyblue", border="black")
+hist(Bike_share$atemp, main="'Feels Like' Temperature Distribution", xlab="Atemp", col="lightgreen", border="black")
+hist(Bike_share$hum, main="Humidity Distribution", xlab="Humidity", col="lightpink", border="black")
+hist(Bike_share$windspeed, main="Windspeed Distribution", xlab="Windspeed", col="lightyellow", border="black")
+hist(Bike_share$registered, main="Registered Users Distribution", xlab="Registered Users", col="lightsalmon", border="black")
+hist(Bike_share$casual, main="Casual Users Distribution", xlab="Casual Users", col="lightgray", border="black")
+hist(Bike_share$cnt, main="Total Rentals Distribution", xlab="Total Rentals", col="lightcyan", border="black")
+
+```
+now let us change our categorical variables data types into factors
+```{r }
+names(Bike_share)
+Bike_share$season <- as.factor(Bike_share$season)
+Bike_share$yr <- as.factor(Bike_share$yr)
+Bike_share$mnth <- as.factor(Bike_share$mnth)
+Bike_share$holiday <- as.factor(Bike_share$holiday)
+Bike_share$weekday <- as.factor(Bike_share$weekday)
+Bike_share$workingday<-as.factor(Bike_share$workingday)
+Bike_share$weathersit <- as.factor(Bike_share$weathersit)
+str(Bike_share)
+```
+Average rental count plotted against the hour distribution broken down by the weathere situation in line graph
+```{r }
+library(ggplot2)
+library(dplyr)
+
+# Ensure 'hr' and 'weathersit' are factors to plot them as discrete values
+Bike_share$hr <- as.factor(Bike_share$hr)
+Bike_share$weathersit <- as.factor(Bike_share$weathersit)
+
+# Group the data by hour and weather situation, then summarize the average rentals
+avg_rentals <- Bike_share %>%
+  group_by(hr, weathersit) %>%
+  summarise(avg_cnt = mean(cnt, na.rm = TRUE))
+
+# Plotting
+ggplot(avg_rentals, aes(x=hr, y=avg_cnt, group=weathersit, color=weathersit)) +
+  geom_line() +
+  labs(title="Average Rentals per Hour for Each Weather Situation",
+       x="Hour of the Day",
+       y="Average Total Rentals") +
+  scale_color_manual(values=c("blue", "green", "red", "purple"),
+                     labels=c("Clear", "Mist", "Light Snow/Rain", "Heavy Rain/Snow"),
+                     name="Weather Situation") +
+  theme_minimal()
+
+```
+showing different type of seasons and comparing the demands based on their types using stacked bar chart
+```{r }
+library(ggplot2)
+library(dplyr)
+seasonal_data <- Bike_share %>%
+  group_by(season) %>%
+  summarise(registered = mean(registered, na.rm = TRUE),
+            casual = mean(casual, na.rm = TRUE),
+            total = mean(cnt, na.rm = TRUE))
+seasonal_data_long <- pivot_longer(seasonal_data, cols = c(registered, casual, total), names_to = "type", values_to = "count")
+ggplot(seasonal_data_long, aes(x = factor(season), y = count, fill = type)) + 
+  geom_bar(stat = "identity", position = position_dodge()) +
+  scale_fill_brewer(palette = "Set1") +
+  labs(title = "Bike Rentals Comparison: Registered vs Casual Users Across Seasons",
+       x = "Season",
+       y = "Average Count",
+       fill = "User Type") +
+  scale_x_discrete(labels = c("Winter", "Spring", "Summer", "Fall")) +
+  theme_minimal()
+
+```
+Box plot distribtuion of weekdays to see outliers and how each days of the weeks median and outliers can compare eachther 
+```{r }
+ggplot(Bike_share, aes(x = factor(weekday), y = cnt)) +
+   geom_boxplot(fill = "green", color = "black") +
+   labs(title = "Bike Rentals Distribution by Hour", x = "Hour of the Day", y = "Total Rentals") +
+   theme_minimal() +
+   theme(plot.title = element_text(hjust = 0.5))
+
+
+```
+weather situation and the behaviour of total rental count 
+```{r }
+Bike_share %>%
+   group_by(weathersit) %>%
+   summarise(avg_rentals = mean(cnt)) %>%
+   ggplot(aes(x = factor(weathersit), y = avg_rentals)) +
+   geom_bar(stat = "identity", fill = "orange", color = "black") +
+   labs(title = "Average Bike Rentals by Weather Situation", x = "Weather Situation", y = "Average Rentals") +
+   theme_minimal() +
+   theme(plot.title = element_text(hjust = 0.5))
+
+```
+Distribution of the total count rental variable to see how it is skewed and decide if we have to transform it 
+
+```{r }
+ggplot(Bike_share, aes(x = cnt)) +
+   geom_histogram(binwidth = 30, fill = "blue", color = "black") + 
+   labs(title = "Histogram of Bike Rentals (cnt)", 
+          x = "Count of Bike Rentals", 
+          y = "Frequency") +
+   theme_minimal() 
+
+```
+now we decided to employ boxcox transformation to reduce the skewness of the count variable so we start by calcualting the lambda 
+```{r }
+
+library(MASS)
+model_box <- lm(cnt ~ .-casual-registered-instant-dteday, data = Bike_share)
+box_cnt <- boxcox(model_box)
+bc.power <- box_cnt$x[which.max(box_cnt$y)]
+
+
+```
+and now let's start transforming by creating custom function that can do as box-cox formula
+```{r }
+bctransform <- function(y, lambda = 0) {
+  if (lambda == 0) {
+    log(y)
+  } else {
+    (y^lambda - 1 )/ lambda
+  }
+}
+
+
+Bike_share$cntT <- bctransform(Bike_share$cnt,bc.power)
+
+ggplot(Bike_share, aes(x = cntT)) +
+   geom_histogram(binwidth=0.3, fill = "orange", color = "black") + # Customize bin width, fill color, and border color
+   labs(title = "Histogram of Bike Rentals (cnt)", 
+          x = "Count of Bike Rentals", 
+          y = "Frequency") +
+   theme_minimal() 
+
+```
+the correlation plot of all numeric variables after total renctal count transformation 
+```{r }
+library(corrplot)
+correlations <- cor(Bike_share[, sapply(Bike_share, is.numeric)])
+corrplot(correlations, method = "color", order = "hclust", 
+             addCoef.col = "black", tl.cex = 0.75, tl.srt = 65, 
+             type = 'lower', number.cex = 0.80)
+
+
+```
+let's bin the hr variable to understand it in a structural way rather than to see some consecative hours  and dummy the categorical variables and remove the original variables to not create conflict 
+```{r }
+Bike_share$hr <- as.numeric(as.character(Bike_share$hr))   
+Bike_share$hr_binned <- cut(Bike_share$hr,
+                                   breaks = c(-1, 5, 9, 12, 15, 19, 23),
+                                   labels = c("Early Morning", "Breakfast", "Brunch", "Lunch", "Evening Rush", "Night"),
+                                   include.lowest = TRUE)
+
+
+Bike_share$hr_binned <- as.factor(Bike_share$hr_binned)   
+names(Bike_share)
+Bike_share$hr <- NULL
+library(fastDummies)
+Bike_share <- dummy_cols(Bike_share, c("season","workingday","holiday",   "hr_binned", 
+                                                          "weekday", "weathersit", 
+                                                          "mnth","yr","workingday"))
+
+columns_to_dummify <- c("season","workingday_1","workingday","weekend","holiday","holiday_1","weekday_0",   "hr_binned", 
+                                                          "weekday", "weathersit", 
+                                                          "mnth","yr", "instant", "dteday", "casual", 
+                                    "registered", 
+                                    "season_1", "mnth_1", "hr_binned_Night",
+                                     "weathersit_1",
+                                     "yr_0","yr")
+Bike_share <- Bike_share[, !names(Bike_share) %in% columns_to_dummify]
+
+```
+
+```{r }
+
+
+```
+plot of correlation of all the numerical variables including the encoded categorical variables 
+```{r }
+library(plotly)
+correlations <- cor(Bike_share[, sapply(Bike_share, is.numeric)])
+correlations[upper.tri(correlations)] <- NA
+data_plotly <- expand.grid(x = colnames(correlations), y = rownames(correlations))
+data_plotly$cor <- as.vector(correlations)
+data_plotly <- data_plotly[!is.na(data_plotly$cor),]
+p <- plot_ly(data = data_plotly, x = ~x, y = ~y, 
+             type = 'heatmap', z = ~cor, 
+             colorscale = 'RdBu', colorbar = list(title = 'Correlation'))
+p %>% layout(title = "Interactive Heatmap of Correlation Matrix",
+                  xaxis = list(title = "", tickangle = -45),
+                  yaxis = list(title = ""),
+                  hovermode = 'closest')
+
+```
+here we wanted to split the data into 70:30 ratio for train and test data
+```{r }
+
+set.seed(123)   
+sample_index <- sample(1:nrow(Bike_share), 0.7 * nrow(Bike_share))
+train_data <- Bike_share[sample_index, ]
+train_data$cnt <- NULL # i wanted to remove after split because i dont want cnt to be removed from my test data
+test_data <- Bike_share[-sample_index, ]
+names(train_data)
+```
+and now we run the first intial full model 
+```{r }
+full_model <- lm(cntT ~ ., data = train_data)
+summary(full_model)
+plot(full_model)
+```
+we started refining the model and we started with the working day variable, which can be reference for the weekend and holiday variable so to avoid multicollinearity we removed it
+```{r }
+full_model2 <- lm(cntT~ . -holiday_0, data= train_data)
+summary(full_model2)
+```
+and now let's check for multicollinearity 
+```{r }
+library(car)
+vif(full_model2)
+```
+remvove temp as it have high vif from the model
+```{r }
+full_model3 <- lm(cntT~.-temp-holiday_0, data=train_data)
+summary(full_model3)
+```
+again let's check
+```{r }
+vif(full_model3)
+```
+remove season_3 because of high vif 
+```{r }
+full_model4 <- lm(cntT~.-season_3-holiday_0-temp, data=train_data)
+summary(full_model4)
+```
+```{r }
+full_model5 <- lm(cntT~.-mnth_3-mnth_12-mnth_6-mnth_4-`hr_binned_Evening Rush`-mnth_10-windspeed-weekday_5-season_3-holiday_0-temp, data=train_data)
+summary(full_model5)
+
+```
+after going through this repetitive and iterative process we achieved in this model by removing variables that have P-value more than 0.05 and high vif variables
+```{r }
+mybest <- lm(cntT~.-mnth_9-mnth_7-weathersit_4-mnth_3-mnth_12-mnth_6-mnth_4-`hr_binned_Evening Rush`-mnth_10-windspeed-weekday_5-season_3-holiday_0-temp, data=train_data)
+summary(mybest)
+
+```
+
+now let's plot my best model to see the diagnostic plots of my best model 
+```{r }
+par(mfrow=c(2,2))
+plot(mybest)
+
+```
+now let's see the cooke's distance plot and see how influential variables are making impact in the observation
+
+```{r }
+plot(cooks.distance(mybest))
+```
+Remove influential variable by seeing from cookes's distance using thumb rule of cooke's setting the threshold to be 4/k-n-1
+```{r }
+cooks_dist <- (cooks.distance(mybest))
+threshold <- 4/(nrow(train_data)-length(mybest)-1)
+influential<- which(cooks_dist >threshold)
+train_data_clean <- train_data[-influential,]
+mybest_clean <- lm(cntT~.-mnth_9-mnth_7-weathersit_4-mnth_3-mnth_12-mnth_6-mnth_4-`hr_binned_Evening Rush`-mnth_10-windspeed-weekday_5-season_3-holiday_0-temp, data = train_data_clean)
+
+summary(mybest_clean)
+```
+now we have the inflential removed training data we called it mybest_clean
+
+```{r }
+mybest_clean <- lm(cntT~.-mnth_8-hr_binned_Breakfast-mnth_2-workingday_0-mnth_9-mnth_7-weathersit_4-mnth_3-mnth_12-mnth_6-mnth_4-`hr_binned_Evening Rush`-mnth_10-windspeed-weekday_5-season_3-holiday_0-temp, data = train_data_clean)
+summary(mybest_clean)
+model_summary <- summary(mybest_clean)
+
+# Get the coefficients
+coefficients <- model_summary$coefficients
+
+# Extract the names and values
+coef_names <- rownames(coefficients)
+coef_values <- coefficients[, 1]  # assuming the first column contains the estimates
+
+# Build the equation string
+equation <- paste("y =", coef_values[1])  # start with the intercept
+for (i in 2:length(coef_values)) {
+  # Add each term; use '+' or '-' based on the sign of the coefficient
+  sign <- ifelse(coef_values[i] >= 0, "+", "-")
+  equation <- paste(equation, sign, abs(coef_values[i]), "*", coef_names[i])
+}
+
+# Print the equation
+cat(equation)
+
+
+```
+$$
+y = 7.77048069419754 + 6.98601729335244 * atemp - 2.89363759912518 * hum + 0.346635898775749 * season_2 + 1.27165439727853 * season_4 - 5.86622284137807 * `hr_binned_Early Morning` - 0.54906196024029 * hr_binned_Brunch - 0.465561072767943 * hr_binned_Lunch - 0.388973979982415 * weekday_1 - 0.411909026417438 * weekday_2 - 0.373208442609146 * weekday_3 - 0.283203830299214 * weekday_4 + 0.204062481040529 * weekday_6 + 0.15386373710491 * weathersit_2 - 0.932376351100348 * weathersit_3 + 0.318409590549216 * mnth_5 - 0.195896618816579 * mnth_11 + 1.1968584552634 * yr_1
+$$
+plotting our outlier removed data
+```{r }
+
+par(mfrow=c(2,2))
+plot(mybest_clean)
+```
+and let us run the durbin watson test 
+```{r }
+
+library(lmtest)
+durbin_watson_test <- dwtest(mybest_clean)
+print(durbin_watson_test)
+
+```
+
+
+now lt's see our best model and best clean model how well are they performing 
+
+```{r }
+library(Metrics)
+# 1. Predict with Both Models
+predictions_mybest <- predict(mybest, newdata = test_data)
+predictions_mybest_clean <- predict(mybest_clean, newdata = test_data)
+
+# 2. Calculate Error Metrics
+mse_mybest <- mse(test_data$cntT, predictions_mybest)
+rmse_mybest <- rmse(test_data$cntT, predictions_mybest)
+mae_mybest <- mae(test_data$cntT, predictions_mybest)
+
+mse_mybest_clean <- mse(test_data$cntT, predictions_mybest_clean)
+rmse_mybest_clean <- rmse(test_data$cntT, predictions_mybest_clean)
+mae_mybest_clean <- mae(test_data$cntT, predictions_mybest_clean)
+
+# Creating a data frame for comparison
+comparison_df <- data.frame(
+  Model = c("mybest", "mybest_clean"),
+  MSE = c(mse_mybest, mse_mybest_clean),
+  RMSE = c(rmse_mybest, rmse_mybest_clean),
+  MAE = c(mae_mybest, mae_mybest_clean)
+)
+
+# 3. Comparison Analysis
+print(comparison_df)
+
+# 4. Optional Visualizations
+# Plotting Actual vs Predicted values for both models
+library(ggplot2)
+
+# Create a combined data frame for plotting
+plot_data <- data.frame(
+  Actual = test_data$cntT,
+  Predicted_mybest = predictions_mybest,
+  Predicted_mybest_clean = predictions_mybest_clean
+)
+
+ggplot(plot_data) +
+  geom_point(aes(x = Actual, y = Predicted_mybest), colour = "blue") +
+  geom_point(aes(x = Actual, y = Predicted_mybest_clean), colour = "red") +
+  labs(title = "Actual vs Predicted Bike Counts", x = "Actual", y = "Predicted") +
+  theme_minimal()
+# Assuming lm_mybest and lm_mybest_clean are your linear models
+
+
+```
+
+
+we use best subset selection method to select the best model from all 
+```{r reg_back}
+
+Best_subset <- leaps::regsubsets(cntT ~ .,method="exhaustive", train_data_clean, nvmax = 10)
+Best_subset_sum <- summary(Best_subset)
+Varselect <- data.frame(Forcein = Best_subset_sum$obj$force.in,
+      Forceout = Best_subset_sum$obj$force.out)
+
+Varselect %>% round(3)%>%
+      kable("html") %>%
+      kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE, font_size = 9)
+```
+```{r reg_back2}
+exhselect <- data.frame(Best_subset_sum$outmat)
+exhselect %>%
+      kable("html") %>%
+      kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = TRUE, font_size = 9)
+
+
+```
+
+```{r bestmodel}
+best_model_index <- which.min(Best_subset_sum$bic)
+best_model <- coef(Best_subset, id = best_model_index)
+best_coefficients <- round(unname(best_model)[-1], 4)
+variable_names <- names(best_model)[-1]
+intercept_coefficient <- round(unname(best_model)[1], 4)
+named_coefficients <- setNames(best_coefficients, variable_names)
+equation <- paste("y =", intercept_coefficient, "+", paste(named_coefficients, variable_names, sep = " * ", collapse = " + "), "")
+equation
+
+```
+$$
+y = 6.9595 + 6.9448 * atemp + -2.8928 * hum + 0.4237 * season_2 + 1.1749 * season_4 + -4.6435 * `hr_binned_Early Morning` + 1.2281 * hr_binned_Breakfast + 0.6761 * hr_binned_Brunch + 0.7534 * hr_binned_Lunch + 2.34 * `hr_binned_Evening Rush` + 2.4218 * weathersit_4 + 0.1765 * weekday_5 
+$$
+```{r }
+par(mfrow = c(2, 2))
+plot(Best_subset_sum$rss, xlab = "Number of Variables\n(a)", ylab = "RSS",
+      type = "l", lwd = 1.5, cex.main = 1.15, cex.lab = 1, cex.axis = 1.05,
+      font.axis = 2, font.lab = 2, main = "Number of Variables Vs. RSS",
+      panel.first = grid(nx = NULL, ny = NULL, col = "gray", lty = 2))
+points(9, Best_subset_sum$adjr2[9], col = "#336679", cex = 2, pch = 20)
+plot(Best_subset_sum$adjr2, xlab = "Number of Variables\n(b)",
+      ylab = "Adjusted RSq", type = "l", lwd = 1.5, main = "Number of Variables Vs. Adjusted R2",
+      cex.main = 1.15, cex.lab = 1, cex.axis = 1.05, font.axis = 2,
+      font.lab = 2, panel.first = grid(nx = NULL, ny = NULL, col = "gray",
+            lty = 2))
+points(9, Best_subset_sum$adjr2[9], col = "#336679", cex = 2, pch = 20)
+
+plot(Best_subset_sum$cp, xlab = "Number of Variables\n(c)", ylab = "Cp",
+      type = "l", lwd = 1.5, cex.main = 1.15, cex.lab = 1, cex.axis = 1.05,
+      font.axis = 2, font.lab = 2, main = "Number of Variables Vs. Mellow's Cp",
+      panel.first = grid(nx = NULL, ny = NULL, col = "gray", lty = 2))
+points(9, Best_subset_sum$cp[9], col = "#336679", cex = 2, pch = 20)
+
+plot(Best_subset_sum$bic, xlab = "Number of Variables\n(d)", ylab = "BIC",
+      type = "l", lwd = 1.5, cex.main = 1.15, cex.lab = 1, cex.axis = 1.05,
+      font.axis = 2, font.lab = 2, main = "Number of Variables Vs. BIC",
+      panel.first = grid(nx = NULL, ny = NULL, col = "gray", lty = 2))
+points(9, Best_subset_sum$bic[9], col = "#336679", cex = 2, pch = 20)
+
+```
+```{r }
+
+best_model_index <- which.min(Best_subset_sum$bic)
+best_predictors <- names(coef(Best_subset, id = best_model_index))
+formula_best <- as.formula(paste("cntT ~", paste(best_predictors[-1], collapse = "+")))
+best_model_fit <-lm(formula_best , data = train_data)
+summary(best_model_fit)
+calculate_error_metrics <- function(actual, predicted, model_name) {
+   data.frame(
+      Model = model_name,
+      MSE = mse(actual, predicted),
+      RMSE = rmse(actual, predicted),
+      MAE = mae(actual, predicted)
+   )
+}
+error_metrics_train <- calculate_error_metrics(train_data$cntT, predict(best_model_fit, newdata = train_data), "Training")
+error_metrics_test <- calculate_error_metrics(test_data$cntT, predict(best_model_fit, newdata = test_data), "Testing")
+
+# Combine and display error metrics
+error_metrics <- rbind(error_metrics_train, error_metrics_test)
+kable(error_metrics, format = "html", col.names = c("Dataset", "MSE", "RMSE", "MAE")) %>%
+   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width = FALSE)
+
+```
+
+
+```{r }
+y_test_pred <- predict(best_model_fit, newdata = test_data)
+
+```
+
+```{r }
+# Assuming cntT is your transformed variable and bc.power is your lambda value
+
+ggplot(data = test_data, aes(x = cntT, y = y_test_pred)) +
+   geom_point(colour = "#0c4c8a") +
+   geom_abline(intercept = 0, slope = 1, colour = "#0c4c8a") +
+   labs(
+      subtitle = "Best Subset selection",
+      title = "Actual vs Predicted Total rent count",
+      x = "Actual count",
+      y = "Predicted ount"
+   )+
+   scale_x_continuous(name="") +
+   scale_y_continuous(name="")+
+   theme_linedraw()+
+   theme(panel.grid = element_line(color = "#666666",
+                                                   linewidth = 0.65,
+                                                   linetype = 4))
+
+
+```
+```{r }
+
+
+pred = function(atemp,hum,season_2,season_4,hr_binned_Early_Morning,hr_binned_Breakfast,hr_binned_Brunch, hr_binned_Lunch,hr_binned_Evening_Rush,weather_4,weekday_5){
+  6.76614+6.87685*atemp-2.68942*hum+0.44471*season_2+1.17986*season_4-4.5228*hr_binned_Early_Morning+0.99113*hr_binned_Breakfast+0.73567*hr_binned_Brunch +0.84553*hr_binned_Lunch+2.46613*hr_binned_Evening_Rush+2.32920*weathersit_4+0.24628*weekday_5}
+atemp=0.576
+hum=0.30
+season_2=1
+season_4=0
+hr_binned_Early_Morning=0
+hr_binned_Breakfast=
+hr_binned_Brunch= 0
+hr_binned_Lunch=0
+hr_binned_Evening_Rush=1
+weathersit_4=0
+weekday_5=1
+y = pred(atemp,hum,season_2,season_4,hr_binned_Early_Morning,hr_binned_Breakfast,hr_binned_Brunch, hr_binned_Lunch,hr_binned_Evening_Rush,weather_4,weekday_5)
+
+BCTransformInver <- function(y, lambda) {
+  if (lambda == 0) {
+    exp(y)
+  } else {
+    (y * lambda + 1)^(1 / lambda)
+  }
+}
+BCTransformInver(y,bc.power)
+```
