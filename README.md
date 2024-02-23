@@ -44,11 +44,14 @@ models. Similarly, understanding the skewness can help in identifying potential 
 making necessary transformations for modeling. For this specific case we used histogram to 
 visualize and understand the distribution. 
 Fig.1.0
+![](Histogram.png)
+
 This plot illustrates the average number count of rentals at different hours of the day. Peaks in the 
 graph indicate the times when rentals are most frequent, likely corresponding to rush hours or 
 popular biking times. This insight is vital for scheduling maintenance and ensuring availability
 during high-demand periods.
 Fig 1.1
+![](line.png)
 The above figure shows that a lot of people rent bikes around 5 PM. Having our highest peak on 
 workdays which might mean that many people use bike-sharing to get home. What's interesting is 
 that this happens almost every day, no matter what the weather is like. This tells us that people 
@@ -58,6 +61,7 @@ We plotted correlation between numerical variables to observe their relationship
 the chart below, there is a high correlation between temperature and perceived temperature (atemp) 
 which is expected.
 Fig 1.2
+![](corr.png)
 ## 4. Feature Engineering
 ### 4.1 Transformation
 We noticed that our bike rental data was unevenly distributed, with most values clustered on one 
@@ -101,13 +105,13 @@ ekday1−0.411909026417438*weekday2−0.373208442609146*weekday3−0.28320383029
 weekday4+0.204062481040529*weekday6+0.15386373710491*weathersit2−0.9323763511003
 48*weathersit3+0.318409590549216*mnth5−0.195896618816579*mnth11+1.1968584552634*
 yr1
-Fig 1.5
 Lastly, in Fig 5.1, we examined the residual vs leverage plot. We noticed two observations that 
 have a high impact on our model result, and we applied Cooke's distance rule of thumb threshold
 for influential variables, which is removing observations exceeding 4/(K-N-1). This removes any 
 potential influential observation where K is the number of predictors and N is number of 
 observation.
 Fig 1.6
+![](diagnostic.png)
 Observing fig 1.6, the residual versus fitted values reveals that the variance of the residuals is not 
 constant across the horizontal line of fitted values, indicating heteroscedasticity. This condition 
 often arises in datasets with skewed distributions and suggests that the relationship between 
@@ -121,7 +125,6 @@ on our model.
 We lastly used “Best Subset selection modeling” method to get the best performing model. The 
 best subset method provided a visual plot shown below. This plot clearly demonstrated the impact 
 of each variable as it was added, guiding us in optimizing our model effectively. 
-Fig 1.7
 From Best Subset Selection output, we chose our model guided by the Bayesian Information Criterion 
 (BIC). This criterion is preferred as it penalizes the addition of variables, maintaining the simplicity of the 
 model while ensuring good performance. After selecting the model, we evaluated its performance on both 
@@ -130,6 +133,7 @@ test data. These metrics indicate that our model is effective in predicting the 
 Additionally, we created a plot comparing Actual versus Predicted values to visually assess the accuracy of 
 our predictions.
 Fig 1.8
+![](final.png)
 Here is the mathematical presentation of our Best Subset Selected Model with minimum BIC: 
 y=6.9595+6.9448∗atemp+−2.8928∗hum+0.4237∗season_2+1.1749∗season_4+−
 4.6435∗‘hrbinnedEarlyMorning‘+1.2281∗hrbinnedBreakfast+0.6761∗hrbinnedBr
